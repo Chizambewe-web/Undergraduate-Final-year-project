@@ -1,0 +1,420 @@
+http://localhost/church/tests/report-export.php?start_date=2025-08-06&end_date=2025-08-20
+
+
+
+
+<!-- Controls Section -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
+    <div class="w-full sm:w-auto relative">
+        <select id="date-range" name="date-range"
+            class="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            <option value="">Date Range</option>
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last Quarter</option>
+            <option value="365">Last Year</option>
+            <option value="custom">Custom Range</option>
+        </select>
+
+        <!-- Custom Range Dropdown -->
+        <div id="custom-range-container"
+            class="hidden absolute top-full left-0 mt-2 p-4 bg-white rounded-lg border border-gray-200 shadow-lg z-10 min-w-full">
+            <div class="flex flex-col gap-4">
+                <div>
+                    <label for="start-date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input type="date" id="start-date" class="w-full p-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                    <label for="end-date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input type="date" id="end-date" class="w-full p-2 border border-gray-300 rounded-md">
+                </div>
+                <div class="flex gap-2">
+                    <button id="apply-custom-range" type="button"
+                        class="flex-1 px-3 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        Apply
+                    </button>
+                    <button id="cancel-range" type="button"
+                        class="flex-1 px-3 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button id="export-btn" type="button"
+        class="inline-flex items-center justify-center w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 whitespace-nowrap">
+        <i class="fas fa-file-export mr-2"></i> Report Export
+    </button>
+</div>
+
+<div id="status-message" class="hidden mt-2 p-3 rounded-md"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dateRangeSelect = document.getElementById('date-range');
+        const exportBtn = document.getElementById('export-btn');
+        const customRangeContainer = document.getElementById('custom-range-container');
+        const startDateInput = document.getElementById('start-date');
+        const endDateInput = document.getElementById('end-date');
+        const applyCustomRangeBtn = document.getElementById('apply-custom-range');
+        const cancelRangeBtn = document.getElementById('cancel-range');
+        const statusMessage = document.getElementById('status-message');
+
+        // Set default end date to today
+        const today = new Date();
+        endDateInput.value = formatDate(today);
+
+        // Set default start date to 7 days ago
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        startDateInput.value = formatDate(sevenDaysAgo);
+
+        // Track if custom range is being used
+        let usingCustomRange = false;
+
+        // Handle date range selection
+        dateRangeSelect.addEventListener('change', function () {
+            if (this.value === 'custom') {
+                customRangeContainer.classList.remove('hidden');
+                usingCustomRange = true;
+            } else {
+                customRangeContainer.classList.add('hidden');
+                usingCustomRange = false;
+                updateDateRange(this.value);
+            }
+        });
+
+        // Apply custom range
+        applyCustomRangeBtn.addEventListener('click', function() {
+            if (!startDateInput.value || !endDateInput.value) {
+                showStatus('Please select both start and end dates.', 'error');
+                return;
+            }
+
+            if (new Date(startDateInput.value) > new Date(endDateInput.value)) {
+                showStatus('Start date cannot be after end date.', 'error');
+                return;
+            }
+
+            customRangeContainer.classList.add('hidden');
+            showStatus('Custom date range applied.', 'success');
+            
+            // Set the dropdown to show "Custom Range"
+            dateRangeSelect.value = 'custom';
+            usingCustomRange = true;
+        });
+
+        // Cancel custom range selection
+        cancelRangeBtn.addEventListener('click', function() {
+            customRangeContainer.classList.add('hidden');
+            dateRangeSelect.value = '';
+            usingCustomRange = false;
+        });
+
+        // Handle export button click
+        exportBtn.addEventListener('click', function () {
+            let startDate, endDate;
+
+            if (usingCustomRange) {
+                if (!startDateInput.value || !endDateInput.value) {
+                    showStatus('Please select both start and end dates for custom range.', 'error');
+                    return;
+                }
+                startDate = startDateInput.value;
+                endDate = endDateInput.value;
+            } else if (dateRangeSelect.value) {
+                const dateRange = getDateRange(parseInt(dateRangeSelect.value));
+                startDate = dateRange.start;
+                endDate = dateRange.end;
+            } else {
+                showStatus('Please select a date range first.', 'error');
+                return;
+            }
+
+            // Update button text with selected dates
+            const originalText = this.innerHTML;
+            this.innerHTML = `<i class="fas fa-file-export mr-2"></i> Loading...`;
+            this.disabled = true;
+
+            // In a real application, you would export with these dates
+            console.log(`Exporting from ${startDate} to ${endDate}`);
+
+            // For demonstration - show success message
+            showStatus(`Exporting data from ${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`, 'success');
+
+            // Reset button after a short delay (in real app, this would be after the export completes)
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 2000);
+
+            // In your actual code, you would redirect to the export URL:
+            // window.location.href = `report-export.php?start_date=${startDate}&end_date=${endDate}`;
+        });
+
+        // Function to update date range based on selection
+        function updateDateRange(days) {
+            const dateRange = getDateRange(parseInt(days));
+            // In a real application, you would update the report data here
+            showStatus(`Date range updated to last ${days} days.`, 'success');
+        }
+
+        // Function to calculate date range
+        function getDateRange(days) {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - days);
+
+            return {
+                start: formatDate(start),
+                end: formatDate(end)
+            };
+        }
+
+        // Function to format date as YYYY-MM-DD
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Function to format date for display (MM/DD/YYYY)
+        function formatDisplayDate(dateString) {
+            const date = new Date(dateString);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${month}/${day}/${year}`;
+        }
+
+        // Function to show status messages
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'mt-2 p-3 rounded-md';
+
+            if (type === 'error') {
+                statusMessage.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                statusMessage.classList.add('bg-green-100', 'text-green-700');
+            }
+
+            statusMessage.classList.remove('hidden');
+
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusMessage.classList.add('hidden');
+                }, 5000);
+            }
+        }
+    });
+</script>
+
+
+
+
+
+  CREATE TABLE report_metrics (
+    id INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    metrics INT(11),
+    type ENUM('generated', 'downloaded') NOT NULL,
+    last_updates DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+
+<script>
+    document.getElementById('exportExcel').addEventListener('click', function() {
+    console.log('Export Excel button clicked successfully!');
+});
+</script>
+
+
+
+
+
+    <script>
+        document.getElementById('exportExcel', 'exportCSV', 'exportPDF').addEventListener('click', function() {
+            addLog('✅ Export Excel button clicked successfully!', 'success');
+            
+            const payload = {
+                metric: 1,
+                type: 'downloaded',
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('📦 Sending payload: ' + JSON.stringify(payload), 'info');
+
+            fetch('update_metrics.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                addLog('📥 Received response from server', 'info');
+                return response.text();
+            })
+            .then(data => {
+                addLog('✅ Server response: ' + data, 'success');
+            })
+            .catch(error => {
+                addLog('❌ Fetch error: ' + error, 'error');
+            });
+        });
+
+        function addLog(message, type) {
+            const logContainer = document.getElementById('logOutput');
+            
+            // Check if the log container exists
+            if (!logContainer) {
+                console.error('Log container not found!');
+                return;
+            }
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = message;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+    </script>
+
+                                        <!-- Asset Type -->
+                                        <div>
+                                            <label for="asset-type"
+                                                class="block text-sm font-medium text-gray-700">Asset Type *</label>
+                                            <select id="asset-type" name="asset-type"
+                                                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                                <option value="">Select type</option>
+                                                <option value="audio">Audio Equipment</option>
+                                                <option value="video">Video Equipment</option>
+                                                <option value="furniture">Furniture</option>
+                                                <option value="kitchen">Kitchen Equipment</option>
+                                                <option value="vehicle">Vehicle</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+
+
+                                                                                <!-- Location -->
+                                        <div>
+                                            <label for="location"
+                                                class="block text-sm font-medium text-gray-700">Location *</label>
+                                            <select id="location" name="location"
+                                                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                                <option value="">Select location</option>
+                                                <option value="sanctuary">Sanctuary</option>
+                                                <option value="fellowship-hall">Fellowship Hall</option>
+                                                <option value="kitchen">Kitchen</option>
+                                                <option value="classroom-1">Classroom 1</option>
+                                                <option value="classroom-2">Classroom 2</option>
+                                                <option value="office">Office</option>
+                                                <option value="storage">Storage</option>
+                                            </select>
+                                        </div>
+
+church_info
+
+	1	id Primary	int(11)			No	None		AUTO_INCREMENT	Change Change	Drop Drop	
+	2	name	varchar(255)	utf8mb4_general_ci		No	None			Change Change	Drop Drop	
+	3	description	varchar(50)	utf8mb4_general_ci		No	None			Change Change	Drop Drop	
+	4	phone_no Index	varchar(50)	utf8mb4_general_ci	
+	5   last_updated	timestamp			No	current_timestamp()		ON UPDATE CURRENT_TIMESTAMP()
+
+
+            this code is working fine but on date i want to use this format date format of e.g 3, may 2025    <table class="w-full asset-table" id="assetTable">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left">ID</th>
+                            <th class="px-4 py-3 text-left">Asset Name</th>
+                            <th class="px-4 py-3 text-left">Type</th>
+                            <th class="px-4 py-3 text-left">Serial No.</th>
+                            <th class="px-4 py-3 text-left">Barcode</th>                            
+                            <th class="px-4 py-3 text-left">Location</th>
+                            <th class="px-4 py-3 text-left">Condition</th>
+                            <th class="px-4 py-3 text-left">Estimaed Value</th>
+                            <th class="px-4 py-3 text-left">Current Value</th>
+                            <th class="px-4 py-3 text-left">Purchase Value</th>
+                            <th class="px-4 py-3 text-left">Acquired</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <?php
+                        try {
+                            $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                            
+                            // Initialize date filters
+                            $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
+                            $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
+                            
+                            // Build the SQL query with optional date filters
+                            $sql = "SELECT id, asset_name, asset_type, serial_number, location, condition_status, estimated_value, current_value, purchase_date, barcode, date_acquired 
+                                    FROM assets 
+                                    WHERE is_active = 1";
+                            
+                            $params = [];
+                            
+                            if (!empty($start_date) && !empty($end_date)) {
+                                $sql .= " AND date_acquired BETWEEN :start_date AND :end_date";
+                                $params[':start_date'] = $start_date;
+                                $params[':end_date'] = $end_date;
+                            } elseif (!empty($start_date)) {
+                                $sql .= " AND date_acquired >= :start_date";
+                                $params[':start_date'] = $start_date;
+                            } elseif (!empty($end_date)) {
+                                $sql .= " AND date_acquired <= :end_date";
+                                $params[':end_date'] = $end_date;
+                            }
+                            
+                            $sql .= " ORDER BY date_acquired DESC, id";
+                            
+                            $stmt = $pdo->prepare($sql);
+                            $stmt->execute($params);
+                            $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                            
+                            if (count($assets) > 0) {
+                                foreach ($assets as $asset) {
+                                    echo "<tr class='hover:bg-gray-50'>";
+                                    echo "<td class='px-4 py-3'>" . htmlspecialchars($asset['id']) . "</td>";
+                                    echo "<td class='px-4 py-3 font-medium text-gray-800'>" . htmlspecialchars($asset['asset_name']) . "</td>";
+                                    echo "<td class='px-4 py-3'>" . htmlspecialchars($asset['asset_type']) . "</td>";
+                                    echo "<td class='px-4 py-3'>" . htmlspecialchars($asset['serial_number']) . "</td>";
+                                    echo "<td class='px-4 py-3'><img src='" . htmlspecialchars($asset['barcode']) . "' class='mx-auto h-10' alt='Barcode' /></td>";
+                                    echo "<td class='px-4 py-3'>" . htmlspecialchars($asset['location']) . "</td>";
+                                    echo "<td class='px-4 py-3'><span class='px-2 py-1 text-xs rounded-full " . getStatusClass($asset['condition_status']) . "'>" . htmlspecialchars($asset['condition_status']) . "</span></td>";
+                                    echo "<td class='px-4 py-3'>$" . number_format($asset['estimated_value'], 2) . "</td>";
+                                    echo "<td class='px-4 py-3'>$" . number_format($asset['current_value'], 2) . "</td>";
+                                    echo "<td class='px-4 py-3'>$" . htmlspecialchars($asset['purchase_date'], 2) . "</td>";
+                                    echo "<td class='px-4 py-3'>" . htmlspecialchars($asset['date_acquired']) . "</td>";
+                                    echo "</tr>";
+                                }
+                            } else {
+                                echo "<tr><td colspan='9' class='px-4 py-3 text-center text-gray-500'>No assets found for the selected date range</td></tr>";
+                            }
+                        } catch (PDOException $e) {
+                            echo "<tr><td colspan='9' class='px-4 py-3 text-center text-red-500'>Error fetching data: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                        }
+
+                        // Helper function to get CSS class based on condition status
+                        function getStatusClass($status) {
+                            switch (strtolower($status)) {
+                                case 'excellent':
+                                    return 'bg-green-100 text-green-800';
+                                case 'good':
+                                    return 'bg-blue-100 text-blue-800';
+                                case 'fair':
+                                    return 'bg-yellow-100 text-yellow-800';
+                                case 'poor':
+                                    return 'bg-red-100 text-red-800';
+                                default:
+                                    return 'bg-gray-100 text-gray-800';
+                            }
+                        }
+                        ?>
+                    </tbody>
+                </table>
